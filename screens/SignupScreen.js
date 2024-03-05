@@ -1,149 +1,153 @@
-// SignUp.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Keyboard, ScrollView } from 'react-native';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, addDoc } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
-import RNPickerSelect from 'react-native-picker-select';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 
-const SignUp = ({ navigation }) => {
+// List of available languages for validation
+const availableLanguages = ['English', 'Spanish', 'French', 'German']; // Extend this list as needed
+
+const LanguageInput = ({ languages, setLanguages, placeholder }) => {
+    const [inputValue, setInputValue] = useState('');
+
+    const handleAddLanguage = () => {
+        const language = inputValue.trim();
+        if (language && availableLanguages.includes(language) && !languages.includes(language)) {
+            setLanguages([...languages, language]);
+            setInputValue('');
+            Keyboard.dismiss();
+        }
+    };
+
+    const handleRemoveLanguage = (language) => {
+        setLanguages(languages.filter((lang) => lang !== language));
+    };
+
+    return (
+        <View>
+            <TextInput
+                style={styles.input}
+                onChangeText={setInputValue}
+                value={inputValue}
+                onSubmitEditing={handleAddLanguage}
+                returnKeyType="done"
+                placeholder={placeholder}
+                autoCapitalize="none"
+            />
+            <FlatList
+                data={languages}
+                renderItem={({ item }) => (
+                    <View style={styles.languageTag}>
+                        <Text style={styles.languageText}>{item}</Text>
+                        <TouchableOpacity onPress={() => handleRemoveLanguage(item)}>
+                            <Text style={styles.removeLanguage}>×</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                keyExtractor={(item) => item}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.languageList}
+            />
+        </View>
+    );
+};
+
+const SignupScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
-    const [bio, setBio] = useState('');
-    const [profilePicture, setProfilePicture] = useState('');
-    const [languagePreferences, setLanguagePreferences] = useState('');
+    const [languagesCanTeach, setLanguagesCanTeach] = useState([]);
+    const [languagesWantToLearn, setLanguagesWantToLearn] = useState([]);
 
     const auth = getAuth();
-    const db = getFirestore();
+    const firestore = getFirestore();
 
     const handleSignUp = async () => {
         try {
-            // Create user account with email and password
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
-            console.log('Registered with:', user.email);
-
-            // Store additional user information in Firestore
-            await addDoc(collection(db, 'users'), {
-                uid: user.uid,
-                email: email,
-                name: name,
-                bio: bio,
-                profilePicture: profilePicture,
-                languagePreferences: languagePreferences,
+            await setDoc(doc(firestore, 'users', user.uid), {
+                email,
+                name,
+                languagesCanTeach,
+                languagesWantToLearn,
             });
-
-            // Navigate to another screen or reset navigation stack
-            navigation.navigate('Home'); // Example navigation destination
+            navigation.navigate('HomeScreen');
         } catch (error) {
-            alert(error.message);
             console.error('Error signing up:', error.message);
         }
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Sign Up</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={email}
-                onChangeText={text => setEmail(text)}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={password}
-                secureTextEntry
-                onChangeText={text => setPassword(text)}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Name"
-                value={name}
-                onChangeText={text => setName(text)}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Bio"
-                value={bio}
-                onChangeText={text => setBio(text)}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Profile Picture URL"
-                value={profilePicture}
-                onChangeText={text => setProfilePicture(text)}
-            />
-            <View style={styles.languagePicker}>
-                <RNPickerSelect
-                    style={{
-                        inputAndroid: {
-                            paddingHorizontal: 10,
-                            paddingVertical: 15,
-                            width: '100%',
-                            textAlign: 'center',
-                        },
-                    }}
-                    placeholder={{ label: 'Select Language Preferences', value: null }}
-                    onValueChange={(value) => setLanguagePreferences(value)}
-                    items={[
-                        { label: 'English', value: 'English' },
-                        { label: 'Spanish', value: 'Spanish' },
-                        { label: 'French', value: 'French' },
-                        // Add more language options as needed
-                    ]}
-                />
-            </View>
-            <TouchableOpacity onPress={handleSignUp} style={styles.button}>
+        <ScrollView contentContainerStyle={styles.container}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" />
+
+            <Text style={styles.label}>Password</Text>
+            <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
+
+            <Text style={styles.label}>Name</Text>
+            <TextInput style={styles.input} value={name} onChangeText={setName} />
+
+            <Text style={styles.label}>Languages You Can Teach</Text>
+            <LanguageInput languages={languagesCanTeach} setLanguages={setLanguagesCanTeach} placeholder="Add a language and press enter" />
+
+            <Text style={styles.label}>Languages You Want to Learn</Text>
+            <LanguageInput languages={languagesWantToLearn} setLanguages={setLanguagesWantToLearn} placeholder="Add a language and press enter" />
+
+            <TouchableOpacity style={styles.button} onPress={handleSignUp}>
                 <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
-        </View>
+        </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
         padding: 20,
-        backgroundColor: '#f5f5f5',
     },
-    title: {
-        fontSize: 24,
-        marginBottom: 20,
+    label: {
+        fontSize: 16,
+        marginBottom: 5,
     },
     input: {
-        width: '100%',
-        height: 50,
-        backgroundColor: '#fff',
-        borderColor: '#ccc',
         borderWidth: 1,
-        borderRadius: 5,
+        borderColor: '#ddd',
         padding: 10,
-        marginBottom: 15,
-    },
-    languagePicker: {
-        width: '100%',
-        backgroundColor: '#fff',
-        borderColor: '#ccc',
-        borderWidth: 1,
+        marginBottom: 10,
         borderRadius: 5,
-        marginBottom: 15,
     },
     button: {
-        width: '100%',
+        backgroundColor: '#007bff',
         padding: 15,
-        backgroundColor: '#3498db',
         borderRadius: 5,
         alignItems: 'center',
     },
     buttonText: {
-        color: '#fff',
+        color: '#ffffff',
         fontSize: 16,
+    },
+    languageTag: {
+        flexDirection: 'row',
+        backgroundColor: '#e0e0e0',
+        borderRadius: 15,
+        padding: 8,
+        marginRight: 8,
+        alignItems: 'center',
+        marginTop: 5,
+    },
+    languageText: {
+        fontSize: 14,
+    },
+    removeLanguage: {
+        marginLeft: 5,
+        color: '#333',
+        fontWeight: 'bold',
+    },
+    languageList: {
+        marginTop: 10,
+        flexGrow: 0, // Prevents the list from taking up unnecessary space
     },
 });
 
-export default SignUp;
+export default SignupScreen;

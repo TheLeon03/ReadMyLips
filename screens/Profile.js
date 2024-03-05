@@ -1,195 +1,226 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TextInput, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, FlatList, Keyboard } from 'react-native';
 import { getAuth, signOut } from 'firebase/auth';
-import { getFirestore, collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
-import RNPickerSelect from 'react-native-picker-select';
+import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
 
-const Profile = ({ navigation }) => {
-    const auth = getAuth();
-    const db = getFirestore();
-    const [userProfile, setUserProfile] = useState(null);
+// Component for adding/removing languages
+const LanguageInput = ({ languages, setLanguages, editable }) => {
+    const [inputValue, setInputValue] = useState('');
+
+    const handleAddLanguage = () => {
+        const language = inputValue.trim();
+        if (language && !languages.includes(language)) {
+            setLanguages([...languages, language]);
+            setInputValue('');
+            Keyboard.dismiss();
+        }
+    };
+
+    const handleRemoveLanguage = (language) => {
+        setLanguages(languages.filter((lang) => lang !== language));
+    };
+
+    return (
+        <View>
+            {editable && (
+                <TextInput
+                    style={styles.input}
+                    onChangeText={setInputValue}
+                    value={inputValue}
+                    onSubmitEditing={handleAddLanguage}
+                    returnKeyType="done"
+                    placeholder="Add a language"
+                />
+            )}
+            <FlatList
+                data={languages}
+                renderItem={({ item }) => (
+                    <View style={styles.languageTag}>
+                        <Text style={styles.languageText}>{item}</Text>
+                        {editable && (
+                            <TouchableOpacity onPress={() => handleRemoveLanguage(item)}>
+                                <Text style={styles.removeLanguage}>×</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
+                keyExtractor={(item, index) => index.toString()}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+            />
+        </View>
+    );
+};
+
+const ProfileScreen = () => {
+    const [editMode, setEditMode] = useState(false);
     const [name, setName] = useState('');
     const [bio, setBio] = useState('');
-    const [languagePreferences, setLanguagePreferences] = useState('English');
-    const [editing, setEditing] = useState(false);
+    const [languagesCanTeach, setLanguagesCanTeach] = useState([]);
+    const [languagesWantToLearn, setLanguagesWantToLearn] = useState([]);
+
+    const auth = getAuth();
+    const firestore = getFirestore();
+    const user = auth.currentUser;
 
     useEffect(() => {
-        fetchUserProfile();
-    }, []);
+        const fetchUserProfile = async () => {
+            if (user) {
+                const userProfileRef = doc(firestore, 'users', user.uid);
+                const docSnap = await getDoc(userProfileRef);
 
-    const fetchUserProfile = async () => {
-        try {
-            const currentUser = auth.currentUser;
-            console.log('Current user:', currentUser);
-            if (currentUser) {
-                const q = query(collection(db, 'users'), where('uid', '==', currentUser.uid));
-                const querySnapshot = await getDocs(q);
-                querySnapshot.forEach(doc => {
-                    const userData = doc.data();
-                    setUserProfile({ ...userData, id: doc.id }); // Store the document ID
+                if (docSnap.exists()) {
+                    const userData = docSnap.data();
                     setName(userData.name);
-                    setBio(userData.bio);
-                    setLanguagePreferences(userData.languagePreferences || 'English');
-                    console.log('User profile data:', userData);
-                });
+                    setBio(userData.bio || '');
+                    setLanguagesCanTeach(userData.languagesCanTeach || []);
+                    setLanguagesWantToLearn(userData.languagesWantToLearn || []);
+                }
             }
-        } catch (error) {
-            console.error('Error fetching user profile:', error.message);
+        };
+
+        fetchUserProfile();
+    }, [user, firestore]);
+
+    const handleUpdateProfile = async () => {
+        if (user) {
+            const userProfileRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userProfileRef, {
+                name,
+                bio,
+                languagesCanTeach,
+                languagesWantToLearn,
+            });
+            alert('Profile Updated Successfully');
+            setEditMode(false);
         }
     };
 
     const handleLogout = async () => {
         try {
             await signOut(auth);
-            navigation.navigate('LoginScreen');
+            alert('Logged out successfully');
         } catch (error) {
-            console.error('Error signing out:', error.message);
-        }
-    };
-
-    const handleSaveProfile = async () => {
-        try {
-            const currentUser = auth.currentUser;
-            if (currentUser && userProfile.id) {
-                const userDoc = doc(db, 'users', userProfile.id);
-                await updateDoc(userDoc, { name, bio, languagePreferences });
-                setEditing(false);
-                // Refresh the profile page by fetching the updated user profile data
-                fetchUserProfile();
-            }
-        } catch (error) {
-            console.error('Error updating user profile:', error.message);
+            console.error('Logout Error:', error.message);
         }
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.profileHeader}>
-                <Text style={styles.name}>{userProfile?.name}</Text>
-                {!editing && (
-                    <TouchableOpacity style={styles.editButton} onPress={() => setEditing(true)}>
-                        <Text style={styles.buttonText}>Edit Profile</Text>
+        <View style={{ flex: 1 }}>
+            <ScrollView style={styles.container}>
+                <Text style={styles.label}>Name:</Text>
+                <TextInput style={styles.input} value={name} onChangeText={setName} editable={editMode} />
+
+                <Text style={styles.label}>Bio:</Text>
+                <TextInput style={styles.input} value={bio} onChangeText={setBio} editable={editMode} multiline />
+
+                <Text style={styles.label}>Languages You Can Teach:</Text>
+                <LanguageInput languages={languagesCanTeach} setLanguages={setLanguagesCanTeach} editable={editMode} />
+
+                <Text style={styles.label}>Languages You Want to Learn:</Text>
+                <LanguageInput languages={languagesWantToLearn} setLanguages={setLanguagesWantToLearn} editable={editMode} />
+
+                {editMode ? (
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleUpdateProfile}>
+                            <Text style={styles.buttonText}>Save Changes</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setEditMode(false)}>
+                            <Text style={styles.buttonText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <TouchableOpacity style={styles.button} onPress={() => setEditMode(true)}>
+                        <Text style={styles.buttonText}>Edit</Text>
                     </TouchableOpacity>
                 )}
-            </View>
-            <View style={styles.profileContent}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Bio"
-                    value={bio}
-                    onChangeText={setBio}
-                    editable={editing}
-                    multiline
-                />
-                <View style={styles.languageContainer}>
-                    <Text style={styles.label}>Language Spoken:</Text>
-                    <View style={styles.languagePicker}>
-                        <RNPickerSelect
-                            style={{ inputAndroid: { paddingHorizontal: 10, paddingVertical: 15 } }}
-                            placeholder={{ label: 'Select Language Spoken', value: null }}
-                            onValueChange={(value) => setLanguagePreferences(value)}
-                            value={languagePreferences}
-                            items={[
-                                { label: 'English 🇺🇸', value: 'English' },
-                                { label: 'Spanish 🇪🇸', value: 'Spanish' },
-                                { label: 'French 🇫🇷', value: 'French' },
-                                // Add more language options as needed
-                            ]}
-                            disabled={!editing}
-                        />
-                    </View>
-                </View>
-            </View>
+            </ScrollView>
             <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Text style={styles.buttonText}>Log Out</Text>
+                <Text style={styles.logoutButtonText}>Logout</Text>
             </TouchableOpacity>
-            {editing && (
-                <View style={styles.editContainer}>
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
-                        <Text style={styles.buttonText}>Save</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
         </View>
     );
 };
 
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
-    },
-    profileHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
-    },
-    name: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    editButton: {
-        backgroundColor: '#f4511e',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 5,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    profileContent: {
-        padding: 20,
-    },
-    input: {
-        width: '100%',
-        height: 100,
-        backgroundColor: '#fff',
-        borderColor: '#ccc',
-        borderWidth: 1,
-        borderRadius: 5,
-        marginBottom: 20,
-        paddingHorizontal: 10,
-    },
-    languageContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 20,
+        padding: 30,
+        paddingTop: 70,
+        backgroundColor: '#f5f5f5',
     },
     label: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginRight: 10,
+        fontSize: 18,
+        marginBottom: 10,
+        color: '#333',
+        fontWeight: '500',
     },
-    languagePicker: {
-        width: '60%',
+    input: {
         backgroundColor: '#fff',
-        paddingHorizontal: 10,
-    },
-    logoutButton: {
-        backgroundColor: '#f4511e',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
+        borderWidth: 1,
+        borderColor: '#ddd',
         borderRadius: 10,
-        marginHorizontal: 20,
         marginBottom: 20,
-        alignItems: 'center',
+        paddingHorizontal: 15,
+        height: 50,
+        fontSize: 16,
     },
-    editContainer: {
+    button: {
+        backgroundColor: '#007bff',
+        paddingVertical: 15,
+        borderRadius: 10,
         alignItems: 'center',
+        marginTop: 30,
+        marginHorizontal: 20,
     },
     saveButton: {
-        backgroundColor: '#f4511e',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 10,
-        marginBottom: 10,
+        backgroundColor: '#28a745', // Green
+    },
+    cancelButton: {
+        backgroundColor: '#dc3545', // Red
+        marginTop: 10,
+    },
+    buttonText: {
+        color: '#ffffff',
+        fontSize: 20,
+        fontWeight: '600',
+    },
+    languageTag: {
+        flexDirection: 'row',
+        backgroundColor: '#e0e0e0',
+        borderRadius: 15,
+        padding: 8,
+        marginRight: 8,
+        alignItems: 'center',
+        marginTop: 5,
+    },
+    languageText: {
+        fontSize: 14,
+    },
+    removeLanguage: {
+        marginLeft: 5,
+        color: '#333',
+        fontWeight: 'bold',
+    },
+    buttonContainer: {
+        flexDirection: 'column',
+    },
+    logoutButton: {
+        backgroundColor: '#dc3545',
+        paddingVertical: 15,
+        paddingHorizontal: 10,
+        borderRadius: 5,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginHorizontal: 20,
+        marginBottom: 20,
+    },
+    logoutButtonText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
 });
 
-export default Profile;
+export default ProfileScreen;
