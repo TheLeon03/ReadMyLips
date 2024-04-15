@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "894658181916",
+    "project_id": "readmylips-d5848",
+    "storage_bucket": "readmylips-d5848.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894658181916:android:5867434dee4787cba798d9",
+        "android_client_info": {
+          "package_name": "com.read.my.lips.android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYgCZBe-UF7fUNX-kogZyZHTFyqdmDZ9E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

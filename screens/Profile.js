@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, FlatList, Keyboard } from 'react-native';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    ScrollView,
+    StyleSheet,
+    FlatList,
+    Image,
+    Keyboard
+} from 'react-native';
 import { getAuth, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
 
@@ -58,6 +68,7 @@ const ProfileScreen = () => {
     const [bio, setBio] = useState('');
     const [languagesCanTeach, setLanguagesCanTeach] = useState([]);
     const [languagesWantToLearn, setLanguagesWantToLearn] = useState([]);
+    const [profilePic, setProfilePic] = useState(null);
 
     const auth = getAuth();
     const firestore = getFirestore();
@@ -80,19 +91,29 @@ const ProfileScreen = () => {
         };
 
         fetchUserProfile();
-    }, [user, firestore]);
+    }, []);
 
     const handleUpdateProfile = async () => {
         if (user) {
             const userProfileRef = doc(firestore, 'users', user.uid);
-            await updateDoc(userProfileRef, {
+            const updateData = {
                 name,
                 bio,
                 languagesCanTeach,
-                languagesWantToLearn,
-            });
-            alert('Profile Updated Successfully');
-            setEditMode(false);
+                languagesWantToLearn
+            };
+
+            if (profilePic) {
+                updateData.profilePic = profilePic;
+            }
+
+            try {
+                await updateDoc(userProfileRef, updateData);
+                console.log('Profile Updated Successfully');
+                setEditMode(false);
+            } catch (updateError) {
+                console.error('Error updating profile:', updateError);
+            }
         }
     };
 
@@ -108,6 +129,11 @@ const ProfileScreen = () => {
     return (
         <View style={{ flex: 1 }}>
             <ScrollView style={styles.container}>
+                {/* Profile Picture Section */}
+                <Image
+                    source={{ uri: profilePic }}
+                    style={styles.profilePic}
+                />
                 <Text style={styles.label}>Name:</Text>
                 <TextInput style={styles.input} value={name} onChangeText={setName} editable={editMode} />
 
@@ -221,6 +247,15 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    profilePic: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        alignSelf: 'center',
+        marginTop: 20,
+        marginBottom: 20,
+        backgroundColor: '#e1e1e1' // Placeholder color if no image is selected
+    }
 });
 
 export default ProfileScreen;

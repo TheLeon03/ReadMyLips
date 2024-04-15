@@ -1,69 +1,128 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import MatchingAlgorithm from './matchingAlgorithm';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, Button } from 'react-native';
+import { getFirestore, arrayRemove, setDoc, doc, getDoc, collection, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { LogBox } from 'react-native';
+
+// LogBox.ignoreAllLogs();
 
 const HomeScreen = () => {
-    const [currentUser, setCurrentUser] = useState(null);
-    const [userList, setUserList] = useState([]);
-    const auth = getAuth();
+    const [currentProfileIndex, setCurrentProfileIndex] = useState(0);
+    const [profiles, setProfiles] = useState([]);
     const firestore = getFirestore();
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
 
     useEffect(() => {
-        const fetchCurrentUser = async () => {
-            const user = auth.currentUser;
-            if (user) {
-                const userDocRef = doc(firestore, 'users', user.uid);
-                const userDocSnap = await getDoc(userDocRef);
-                if (userDocSnap.exists()) {
-                    const userData = userDocSnap.data();
-                    setCurrentUser({
-                        uid: user.uid,
-                        name: user.displayName,
-                        email: user.email,
-                        languagePreferences: userData.languagePreferences, // Retrieve the language preference
-                    });
-                    await fetchSwipeData(user.uid, userData.languagePreferences); // Pass the language preference to fetchSwipeData
-                }
-            }
-        };
+        initializeSwipes();
+        fetchProfiles();
+    }, [currentUser.uid]);
 
-        const fetchSwipeData = async (userId) => {
-            const swipesRef = doc(firestore, 'swipes', userId);
-            const docSnap = await getDoc(swipesRef);
-            let swipes = { likes: [], dislikes: [] };
+    const initializeSwipes = async () => {
+        const swipesRef = doc(firestore, 'swipes', currentUser.uid);
+        const swipesSnap = await getDoc(swipesRef);
 
-            if (docSnap.exists()) {
-                swipes = docSnap.data();
+        if (!swipesSnap.exists()) {
+            await setDoc(swipesRef, { likes: [], dislikes: [], matches: [] });
+        }
+    };
+
+    const fetchProfiles = async () => {
+        const swipesRef = doc(firestore, 'swipes', currentUser.uid);
+        const swipesSnap = await getDoc(swipesRef);
+        const swipesData = swipesSnap.exists() ? swipesSnap.data() : { likes: [], dislikes: [], matches: [] };
+
+        // Get all users excluding those in the 'likes' array.
+        const usersRef = collection(firestore, 'users');
+        const usersSnapshot = await getDocs(usersRef);
+
+        const filteredProfiles = usersSnapshot.docs
+            .filter(doc =>
+                doc.id !== currentUser.uid && // Exclude the current user's profile
+                !swipesData.likes.includes(doc.id) // Exclude profiles in 'likes'
+            )
+            .map(doc => ({ id: doc.id, ...doc.data() }));
+
+        setProfiles(filteredProfiles);
+        setCurrentProfileIndex(0); // Reset profile index
+    };
+
+    const handleDecision = async (liked, profileId) => {
+        const swipesRef = doc(firestore, 'swipes', currentUser.uid);
+        const swipesSnap = await getDoc(swipesRef);
+        const swipesData = swipesSnap.data();
+
+        // If the user has been disliked previously, remove them from the dislikes array.
+        if (liked && swipesData.dislikes.includes(profileId)) {
+            await updateDoc(swipesRef, {
+                dislikes: arrayRemove(profileId),
+                likes: arrayUnion(profileId)
+            });
+        } else {
+            // Update likes or dislikes array as per the user's decision.
+            const update = liked ? { likes: arrayUnion(profileId) } : { dislikes: arrayUnion(profileId) };
+            await updateDoc(swipesRef, update);
+        }
+
+        if (liked) {
+            // Check if the liked user has already liked the current user
+            const likedUserSwipesRef = doc(firestore, 'swipes', profileId);
+            const likedUserSwipesSnap = await getDoc(likedUserSwipesRef);
+            const likedUserSwipesData = likedUserSwipesSnap.exists() ? likedUserSwipesSnap.data() : { likes: [], dislikes: [], matches: [] };
+
+            if (likedUserSwipesData.likes.includes(currentUser.uid)) {
+                // Mutual like detected, update matches for both users
+                await updateDoc(swipesRef, {
+                    matches: arrayUnion(profileId)
+                });
+                await updateDoc(likedUserSwipesRef, {
+                    matches: arrayUnion(currentUser.uid)
+                });
+                console.log("Match created between", currentUser.uid, "and", profileId);
             } else {
-                console.log("No swipe document found for the user. Creating one...");
-                await setDoc(swipesRef, swipes);
+                // Update likes array for the current user
+                await updateDoc(swipesRef, {
+                    likes: arrayUnion(profileId)
+                });
             }
-            await fetchOtherUsers(userId, swipes);
-        };
+        } else {
+            // Update dislikes array for the current user
+            await updateDoc(swipesRef, {
+                dislikes: arrayUnion(profileId)
+            });
+        }
 
-        const fetchOtherUsers = async (userId, swipes, languagePreferences) => {
-            const { likes, dislikes } = swipes;
-            const allSwipedUserIds = [...likes, ...dislikes, userId];
-            const userQuery = query(collection(firestore, 'users'),
-                where('uid', 'not-in', allSwipedUserIds),
-                where('languagePreferences', '==', languagePreferences)); // Filter by language preference
-            const querySnapshot = await getDocs(userQuery);
-            const users = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+        // Go to the next profile
+        setCurrentProfileIndex(currentProfileIndex + 1);
+    };
 
-            setUserList(users);
-        };
 
-        fetchCurrentUser();
-    }, [auth, firestore]);
+    const ProfileView = ({ profileData }) => {
+        return (
+            <ScrollView style={styles.profileContainer}>
+                <Image
+                    source={profileData.profilePic ? { uri: profileData.profilePic } : require('../assets/default.png')}
+                    style={styles.profileImage}
+                />
+                <Text style={styles.profileName}>{profileData.name}</Text>
+                {/* Render other user details as needed */}
+                {/* Implementing reviews could be similar to user details */}
+                <View style={styles.decisionButtons}>
+                    <Button title="Nope" onPress={() => handleDecision(false, profileData.id)} />
+                    <Button title="Like" onPress={() => handleDecision(true, profileData.id)} />
+                </View>
+            </ScrollView>
+        );
+    };
+
 
     return (
         <View style={styles.container}>
-            {currentUser && <MatchingAlgorithm currentUser={currentUser} userList={userList} />}
+            {profiles.length > 0 && currentProfileIndex < profiles.length ? (
+                <ProfileView profileData={profiles[currentProfileIndex]} />
+            ) : (
+                <Text style={styles.noMoreProfilesText}>No more profiles</Text>
+            )}
         </View>
     );
 };
@@ -71,8 +130,31 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
+        backgroundColor: '#f8f8f8',
         alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileContainer: {
+        width: '100%',
+        padding: 10,
+    },
+    profileImage: {
+        width: '100%',
+        height: 300,
+        borderRadius: 10,
+    },
+    profileName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginTop: 10,
+    },
+    decisionButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        marginTop: 20,
+    },
+    noMoreProfilesText: {
+        fontSize: 22,
     },
 });
 

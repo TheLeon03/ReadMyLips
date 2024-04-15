@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from './screens/HomeScreen';
 import Profile from './screens/Profile';
-import Page from './screens/Friends';
+import Message from './screens/MatchListScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen'; // Assuming you have a SignupScreen component
 
@@ -55,7 +55,7 @@ const FriendStack = () => (
     <Stack.Navigator screenOptions={screenOptions}>
         <Stack.Screen
             name="FriendScreen"
-            component={Page}
+            component={Message}
             options={{ headerShown: false }} // Hide the header for PageScreen
         />
     </Stack.Navigator>
@@ -64,7 +64,7 @@ const FriendStack = () => (
 const TabNavigator = () => (
     <Tab.Navigator>
         <Tab.Screen name="Home" component={HomeStack} />
-        <Tab.Screen name="Friends" component={FriendStack} />
+        <Tab.Screen name="Messages" component={FriendStack} />
         <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
 );
