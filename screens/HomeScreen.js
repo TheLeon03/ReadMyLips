@@ -28,23 +28,34 @@ const HomeScreen = () => {
     };
 
     const fetchProfiles = async () => {
+        // Get the current user's profile to find out what languages they want to learn
+        const currentUserProfileRef = doc(firestore, 'users', currentUser.uid);
+        const currentUserProfileSnap = await getDoc(currentUserProfileRef);
+        const currentUserProfile = currentUserProfileSnap.data();
+
+        // Retrieve the languages the current user wants to learn
+        const languagesToLearn = currentUserProfile.languagesWantToLearn || [];
+
         const swipesRef = doc(firestore, 'swipes', currentUser.uid);
         const swipesSnap = await getDoc(swipesRef);
         const swipesData = swipesSnap.exists() ? swipesSnap.data() : { likes: [], dislikes: [], matches: [] };
 
-        // Get all users excluding those in the 'likes' array.
         const usersRef = collection(firestore, 'users');
         const usersSnapshot = await getDocs(usersRef);
 
         const filteredProfiles = usersSnapshot.docs
-            .filter(doc =>
-                doc.id !== currentUser.uid && // Exclude the current user's profile
-                !swipesData.likes.includes(doc.id) // Exclude profiles in 'likes'
-            )
+            .filter(doc => {
+                const potentialMatchProfile = doc.data();
+                // Filter out current user, users already liked/disliked, and users who can't teach the language the current user wants to learn
+                return doc.id !== currentUser.uid &&
+                    !swipesData.likes.includes(doc.id) &&
+                    !swipesData.matches.includes(doc.id) &&
+                    potentialMatchProfile.languagesCanTeach.some(language => languagesToLearn.includes(language));
+            })
             .map(doc => ({ id: doc.id, ...doc.data() }));
 
         setProfiles(filteredProfiles);
-        setCurrentProfileIndex(0); // Reset profile index
+        setCurrentProfileIndex(0);
     };
 
     const handleDecision = async (liked, profileId) => {

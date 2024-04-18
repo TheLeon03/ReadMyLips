@@ -1,53 +1,40 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, Keyboard, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, ScrollView, TextInput } from 'react-native';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 
-// List of available languages for validation
-const availableLanguages = ['English', 'Spanish', 'French', 'German']; // Extend this list as needed
+// Sample language data with flag images (Add actual image paths or URLs for your app)
+const languages = [
+    { name: 'English', flag: require('../assets/flags/english.jpg') },
+    { name: 'Spanish', flag: require('../assets/flags/spanish.jpg') },
+    { name: 'French', flag: require('../assets/flags/french.jpg') },
+    { name: 'German', flag: require('../assets/flags/german.jpg') },
+    { name: 'Italian', flag: require('../assets/flags/italian.jpg') },
+    { name: 'Portuguese', flag: require('../assets/flags/portuguese.jpg') },
+    { name: 'Russian', flag: require('../assets/flags/russian.jpg') },
+    { name: 'Japanese', flag: require('../assets/flags/japanese.jpg') },
+    { name: 'Korean', flag: require('../assets/flags/korean.jpg') },
+    { name: 'Chinese', flag: require('../assets/flags/chinese.jpg') },
+];
 
-const LanguageInput = ({ languages, setLanguages, placeholder }) => {
-    const [inputValue, setInputValue] = useState('');
-
-    const handleAddLanguage = () => {
-        const language = inputValue.trim();
-        if (language && availableLanguages.includes(language) && !languages.includes(language)) {
-            setLanguages([...languages, language]);
-            setInputValue('');
-            Keyboard.dismiss();
+const LanguageSelector = ({ selectedLanguages, setSelectedLanguages }) => {
+    const toggleLanguage = (lang) => {
+        if (selectedLanguages.includes(lang)) {
+            setSelectedLanguages(selectedLanguages.filter(l => l !== lang));
+        } else {
+            setSelectedLanguages([...selectedLanguages, lang]);
         }
     };
 
-    const handleRemoveLanguage = (language) => {
-        setLanguages(languages.filter((lang) => lang !== language));
-    };
-
     return (
-        <View>
-            <TextInput
-                style={styles.input}
-                onChangeText={setInputValue}
-                value={inputValue}
-                onSubmitEditing={handleAddLanguage}
-                returnKeyType="done"
-                placeholder={placeholder}
-                autoCapitalize="none"
-            />
-            <FlatList
-                data={languages}
-                renderItem={({ item }) => (
-                    <View style={styles.languageTag}>
-                        <Text style={styles.languageText}>{item}</Text>
-                        <TouchableOpacity onPress={() => handleRemoveLanguage(item)}>
-                            <Text style={styles.removeLanguage}>×</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-                keyExtractor={(item) => item}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.languageList}
-            />
+        <View style={styles.languageContainer}>
+            {languages.map((language, index) => (
+                <TouchableOpacity key={index} onPress={() => toggleLanguage(language.name)} style={styles.flagButton}>
+                    <Image source={language.flag} style={styles.flagImage} />
+                    {selectedLanguages.includes(language.name) && <View style={styles.checkmark} />}
+                    <Text style={styles.flagText}>{language.name}</Text>
+                </TouchableOpacity>
+            ))}
         </View>
     );
 };
@@ -90,10 +77,10 @@ const SignupScreen = ({ navigation }) => {
             <TextInput style={styles.input} value={name} onChangeText={setName} />
 
             <Text style={styles.label}>Languages You Can Teach</Text>
-            <LanguageInput languages={languagesCanTeach} setLanguages={setLanguagesCanTeach} placeholder="Add a language and press enter" />
+            <LanguageSelector selectedLanguages={languagesCanTeach} setSelectedLanguages={setLanguagesCanTeach} />
 
             <Text style={styles.label}>Languages You Want to Learn</Text>
-            <LanguageInput languages={languagesWantToLearn} setLanguages={setLanguagesWantToLearn} placeholder="Add a language and press enter" />
+            <LanguageSelector selectedLanguages={languagesWantToLearn} setSelectedLanguages={setLanguagesWantToLearn} />
 
             <TouchableOpacity style={styles.button} onPress={handleSignUp}>
                 <Text style={styles.buttonText}>Sign Up</Text>
@@ -127,27 +114,33 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 16,
     },
-    languageTag: {
+    languageContainer: {
         flexDirection: 'row',
-        backgroundColor: '#e0e0e0',
-        borderRadius: 15,
-        padding: 8,
-        marginRight: 8,
+        flexWrap: 'wrap',
+        justifyContent: 'space-around',
+        marginBottom: 20,
+    },
+    flagButton: {
+        padding: 10,
         alignItems: 'center',
-        marginTop: 5,
     },
-    languageText: {
-        fontSize: 14,
+    flagImage: {
+        width: 50,
+        height: 30,
+        marginBottom: 5,
     },
-    removeLanguage: {
-        marginLeft: 5,
-        color: '#333',
-        fontWeight: 'bold',
+    checkmark: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: 20,
+        height: 20,
+        backgroundColor: 'green',
+        borderRadius: 10,
     },
-    languageList: {
-        marginTop: 10,
-        flexGrow: 0, // Prevents the list from taking up unnecessary space
-    },
+    flagText: {
+        fontSize: 12,
+    }
 });
 
 export default SignupScreen;

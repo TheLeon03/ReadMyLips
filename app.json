@@ -2,6 +2,7 @@
   "expo": {
     "name": "ReadMyLips",
     "slug": "ReadMyLips",
+    "owner": "theleon03",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./app/assets/icon.png",
@@ -23,6 +24,17 @@
         "backgroundColor": "#ffffff"
       }
     },
-    "web": {}
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "000e8bc5-2392-4c0e-9f47-e2465ab51113"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/000e8bc5-2392-4c0e-9f47-e2465ab51113"
+    }
   }
 }

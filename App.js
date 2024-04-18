@@ -6,12 +6,11 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import TabNavigator from './TabNavigator';
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
-import { StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Text, Alert } from 'react-native';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// TODO: Replace the following with your app's Firebase project configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBTji8n0LeHNIR6gb4X5ar3dZftxap1Y9k",
   authDomain: "readmylips-d5848.firebaseapp.com",
@@ -65,8 +64,7 @@ const App = () => {
       }
     });
 
-    // Clean up subscription
-    return unsubscribe;
+    return () => unsubscribe;
   }, [auth, initializing]);
 
   if (initializing) {
@@ -105,7 +103,6 @@ const App = () => {
     </NavigationContainer>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {

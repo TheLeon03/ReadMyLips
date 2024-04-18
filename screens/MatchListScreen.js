@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import MessageScreen from './MessageScreen'; // Make sure this path is correct
 
@@ -39,6 +39,20 @@ const MatchListScreen = () => {
         setShowMessageScreen(false);
     };
 
+    const handleMatch = async (userId) => {
+        const otherUserSwipesRef = doc(firestore, 'swipes', userId);
+        const otherUserSwipesSnap = await getDoc(otherUserSwipesRef);
+        if (otherUserSwipesSnap.exists() && otherUserSwipesSnap.data().likes.includes(currentUserId)) {
+            // It's a match!
+            await updateDoc(doc(firestore, 'swipes', currentUserId), {
+                matches: arrayUnion(userId)
+            });
+            await updateDoc(otherUserSwipesRef, {
+                matches: arrayUnion(currentUserId)
+            });
+        }
+    };
+
     if (showMessageScreen) {
         return <MessageScreen matchedUserId={selectedMatchedUserId} onBack={handleBack} />;
     }
@@ -48,7 +62,10 @@ const MatchListScreen = () => {
             <FlatList
                 data={matchedUsers}
                 renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.matchItem} onPress={() => openConversation(item.id)}>
+                    <TouchableOpacity style={styles.matchItem} onPress={() => {
+                        openConversation(item.id);
+                        handleMatch(item.id);
+                    }}>
                         <Text style={styles.matchText}>{item.name}</Text>
                     </TouchableOpacity>
                 )}

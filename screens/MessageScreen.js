@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Text, TextInput, TouchableOpacity, FlatList, StyleSheet, View } from 'react-native';
+import { Text, StyleSheet, TextInput, TouchableOpacity, FlatList, View } from 'react-native';
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { format } from 'date-fns'; // Ensure you've installed date-fns
+import { format } from 'date-fns';
 
 const MessageScreen = ({ matchedUserId, onBack }) => {
     const [messageText, setMessageText] = useState('');
@@ -13,19 +13,24 @@ const MessageScreen = ({ matchedUserId, onBack }) => {
     const conversationId = [currentUserId, matchedUserId].sort().join('_');
 
     useEffect(() => {
-        if (conversationId) {
-            const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
-            const q = query(messagesRef, orderBy('timestamp', 'asc'));
-            const unsubscribe = onSnapshot(q, (querySnapshot) => {
-                const fetchedMessages = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    timestamp: doc.data().timestamp ? doc.data().timestamp.toDate() : new Date(), // Convert timestamp
-                }));
-                setMessages(fetchedMessages);
+        const messagesRef = collection(firestore, 'conversations', conversationId, 'messages');
+        const q = query(messagesRef, orderBy('timestamp', 'asc'));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            let updatedMessages = [];
+            querySnapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    updatedMessages.push({
+                        ...data,
+                        id: change.doc.id,
+                        timestamp: data.timestamp ? data.timestamp.toDate() : new Date()  // Ensure conversion of server timestamp to Date object
+                    });
+                }
             });
-            return () => unsubscribe();
-        }
+            setMessages(prevMessages => [...prevMessages, ...updatedMessages].sort((a, b) => a.timestamp - b.timestamp));
+            // Ensures that the messages array is sorted by timestamp after each update
+        });
+        return () => unsubscribe();
     }, [conversationId, firestore]);
 
     const sendMessage = async () => {
@@ -34,7 +39,7 @@ const MessageScreen = ({ matchedUserId, onBack }) => {
                 senderId: currentUserId,
                 receiverId: matchedUserId,
                 text: messageText,
-                timestamp: serverTimestamp(),
+                timestamp: serverTimestamp(),  // Firebase server timestamp
             });
             setMessageText('');
         }
@@ -54,6 +59,7 @@ const MessageScreen = ({ matchedUserId, onBack }) => {
                     </View>
                 )}
                 keyExtractor={(item) => item.id}
+                inverted={false}  // Set inverted to false to display messages from top to bottom
             />
             <TextInput
                 style={styles.input}
@@ -72,24 +78,24 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 10,
-        backgroundColor: '#f5f5f5', // Light gray background
+        backgroundColor: '#f5f5f5',
     },
     timestamp: {
         marginTop: 4,
         fontSize: 10,
-        color: 'white', // Use a subtle color for timestamps
-        textAlign: 'right', // Align timestamps to the right
+        color: 'white',
+        textAlign: 'right',
     },
     backButton: {
         marginBottom: 10,
         paddingHorizontal: 15,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#007bff', // Blue background for the button
+        backgroundColor: '#007bff',
         alignSelf: 'flex-start',
     },
     backButtonText: {
-        color: '#ffffff', // White text color
+        color: '#ffffff',
     },
     messageBubble: {
         padding: 12,
@@ -99,11 +105,11 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-end',
     },
     sender: {
-        backgroundColor: '#007bff', // Blue background for sender
+        backgroundColor: '#007bff',
         marginLeft: '20%',
     },
     receiver: {
-        backgroundColor: 'black', // Lighter background for receiver
+        backgroundColor: 'black',
         alignSelf: 'flex-start',
         marginRight: '20%',
     },
@@ -116,8 +122,7 @@ const styles = StyleSheet.create({
         borderColor: '#007bff',
         borderRadius: 20,
         padding: 10,
-        color: '#000000',
-        backgroundColor: '#ffffff', // White background for input
+        backgroundColor: '#ffffff',
         marginBottom: 10,
     },
     sendButton: {
@@ -127,7 +132,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     sendButtonText: {
-        color: '#ffffff', // White text color
+        color: '#ffffff',
     },
 });
 
