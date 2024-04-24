@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, Button } from 'react-native';
 import { getFirestore, arrayRemove, setDoc, doc, getDoc, collection, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { LogBox } from 'react-native';
-
-// LogBox.ignoreAllLogs();
+import GameScreen from './GameScreen';
 
 const HomeScreen = () => {
     const [currentProfileIndex, setCurrentProfileIndex] = useState(0);
     const [profiles, setProfiles] = useState([]);
+    const [showGame, setShowGame] = useState(false);
     const firestore = getFirestore();
     const auth = getAuth();
     const currentUser = auth.currentUser;
@@ -52,11 +51,19 @@ const HomeScreen = () => {
                     !swipesData.matches.includes(doc.id) &&
                     potentialMatchProfile.languagesCanTeach.some(language => languagesToLearn.includes(language));
             })
-            .map(doc => ({ id: doc.id, ...doc.data() }));
+            .map(doc => ({ id: doc.id, ...doc.data(), bio: doc.data().bio }));
 
         setProfiles(filteredProfiles);
         setCurrentProfileIndex(0);
     };
+
+    const handleNoMoreProfiles = () => {
+        setShowGame(true);
+    };
+
+    if (showGame) {
+        return <GameScreen onExit={() => setShowGame(false)} />;
+    }
 
     const handleDecision = async (liked, profileId) => {
         const swipesRef = doc(firestore, 'swipes', currentUser.uid);
@@ -116,8 +123,7 @@ const HomeScreen = () => {
                     style={styles.profileImage}
                 />
                 <Text style={styles.profileName}>{profileData.name}</Text>
-                {/* Render other user details as needed */}
-                {/* Implementing reviews could be similar to user details */}
+                <Text style={styles.profileBio}>{profileData.bio}</Text>
                 <View style={styles.decisionButtons}>
                     <Button title="Nope" onPress={() => handleDecision(false, profileData.id)} />
                     <Button title="Like" onPress={() => handleDecision(true, profileData.id)} />
@@ -126,13 +132,15 @@ const HomeScreen = () => {
         );
     };
 
-
     return (
         <View style={styles.container}>
             {profiles.length > 0 && currentProfileIndex < profiles.length ? (
                 <ProfileView profileData={profiles[currentProfileIndex]} />
             ) : (
-                <Text style={styles.noMoreProfilesText}>No more profiles</Text>
+                <>
+                    <Text style={styles.noMoreProfilesText}>No more profiles to swipe on, test your language skills!</Text>
+                    <Button title="Play Game" onPress={handleNoMoreProfiles} />
+                </>
             )}
         </View>
     );
@@ -164,8 +172,16 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
         marginTop: 20,
     },
+    profileBio: {
+        fontSize: 16,
+        color: 'gray',
+        padding: 10,
+    },
     noMoreProfilesText: {
         fontSize: 22,
+        marginVertical: 10,
+        textAlign: "center",
+        padding: 20,
     },
 });
 
