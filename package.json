@@ -34,7 +34,8 @@
     "react-native-swipe-cards": "^0.1.1",
     "react-native-swiper": "^1.6.0",
     "react-native-web": "~0.19.6",
-    "stream-chat-react-native": "^5.26.0"
+    "stream-chat-react-native": "^5.26.0",
+    "expo-image-picker": "~14.7.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

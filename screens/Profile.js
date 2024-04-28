@@ -16,7 +16,6 @@ const languages = [
     { name: 'Korean', flag: require('../assets/flags/korean.jpg') },
     { name: 'Chinese', flag: require('../assets/flags/chinese.jpg') },
     { name: 'Hindi', flag: require('../assets/flags/hindi.jpg') },
-    { name: 'Mallorquin', flag: require('../assets/flags/mallorquin.jpg') },
 ];
 
 const LanguageSelector = ({ selectedLanguages, setSelectedLanguages, editable }) => {

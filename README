@@ -1,0 +1,23 @@
+
+ReadMyLips is a mobile application designed to enhance language learning through cultural exchange and real-time interaction. It employs a sophisticated matching algorithm to connect users based on their language preferences, fostering meaningful conversations and mutual learning. By integrating gamification elements and focusing on practical language usage, ReadMyLips creates an engaging and effective environment for language learners worldwide.
+
+pre-requisites:
+
+npm installed
+node.js installed
+expo go (on mobile device of choice)
+
+Open up the ReadMyLips file in your IDE of your choice (VS Code, IntelliJ, etc).
+
+then use "npm install" in the IDE terminal.
+
+and once it's done downloading the libraries you can use:
+
+"npm start" or "expo start"
+
+and then scan the qr code with your mobile phone and you should have the app loading.
+
+If you receive an error called:
+"NSRangeException: *** -[__NSArrayMobjectAtIndexedSubscript:]: index 0 beyond bounds for empty array "
+
+just press dismiss and the app should still work like nothing
