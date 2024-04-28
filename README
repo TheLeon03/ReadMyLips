@@ -13,7 +13,7 @@ then use "npm install" in the IDE terminal.
 
 and once it's done downloading the libraries you can use:
 
-"npm start" or "expo start"
+"npm start", "expo start" or "npx expo start --tunnel" (if you are having network issues use this)
 
 and then scan the qr code with your mobile phone and you should have the app loading.
 
